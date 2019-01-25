@@ -1,0 +1,81 @@
+CREATE EXTERNAL TABLE Slack_Messages(
+                   	channel STRING,
+                   	channel_type STRING,
+                   	type STRING,
+                   	user STRING,
+                   	event_time STRING,
+                   	text STRING
+                   )
+                   COMMENT 'Slack_Messages Table by Vitaliy Skachkov'
+                   PARTITIONED BY event_time
+                   ROW FORMAT DELIMITED
+                   FIELDS TERMINATED BY '/f'
+                   STORED AS TEXTFILE
+                   LOCATION '/events';
+
+
+
+
+CREATE EXTERNAL TABLE Slack_Messages(channel STRING, channel_type STRING, type STRING, slack_user STRING, event_time STRING, text STRING) COMMENT 'Slack_Messages Table by Vitaliy Skachkov' ROW FORMAT DELIMITED FIELDS TERMINATED BY '/f' STORED AS TEXTFILE LOCATION '/events';
+
+USE VSKACHKOV; CREATE EXTERNAL TABLE Slack_Messages(channel STRING, channel_type STRING, type STRING, slack_user STRING, event_time STRING, text STRING) partitioned by (event_date string) ROW FORMAT DELIMITED FIELDS TERMINATED BY '/f' STORED AS TEXTFILE LOCATION '/user/vskachkov/events/';
+USE VSKACHKOV; alter table Slack_Messages add partition (event_date = '2019-01-18') location '/user/vskachkov/events/2019/01/18';
+USE VSKACHKOV; alter table Slack_Messages add partition (event_date = '2019-01-16') location '/user/vskachkov/events/2019/01/16';
+---
+CREATE EXTERNAL TABLE Slack_Messages2 (channel STRING, channel_type STRING, type STRING, slack_user STRING, event_time STRING, text STRING) partitioned by (event_date string) ROW FORMAT SERDE 'org.apache.hadoop.hive.contrib.serde2.MultiDelimitSerDe' WITH SERDEPROPERTIES ("field.delim"="/f") STORED AS TEXTFILE LOCATION '/user/vskachkov/events/';
+USE VSKACHKOV; alter table Slack_Messages2 add partition (event_date = '2019-01-18') location '/user/vskachkov/events/2019/01/18';
+USE VSKACHKOV; alter table Slack_Messages2 add partition (event_date = '2019-01-16') location '/user/vskachkov/events/2019/01/16';
+SELECT slack_user, event_date, Count(*) as message_cnt FROM Slack_Messages2 GROUP BY slack_user, event_date;
+
+
+USE vskachkov; CREATE TABLE Channels (ChannelID String, CHannelName String);
+USE vskachkov; INSERT INTO TABLE Channels VALUES ('CFC07SU86', 'Random');
+
+ALTER TABLE messages_stat ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n;
+
+CREATE TABLE Messages_Stat ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' AS SELECT slack_user, event_date, Count(*) as Message_Cnt FROM Slack_Messages GROUP BY slack_user, event_date;
+
+-- mySQL
+CREATE TABLE messages_stat ( slack_user VARCHAR(10), event_date VARCHAR(100), message_cnt bigint );
+CREATE TABLE messages_stat2 ( MessageDate VARCHAR(10), Channel VARCHAR(100), MessageCount bigint );
+
+CREATE TABLE words_stat ( MessageMinute VARCHAR(10), word VARCHAR(100), MessageCount bigint );
+CREATE TABLE words_stat2 ( MessageHour VARCHAR(10), word VARCHAR(100), MessageCount bigint );
+--
+MessageMinute, word, MessageCount
+
+CREATE TABLE Slack_Messages ( channel VARCHAR(10) );
+
+----------------
+-- sqoop -------
+----------------
+sqoop export --connect jdbc:mysql://db.example.com/foo --table bar  \
+    --export-dir /results/bar_data
+
+
+hive -S -e "describe formatted Messages_Stat;" | grep 'Location' | awk '{ print $NF }'
+
+sqoop export --verbose --columns category,count --connect jdbc:mysql://ip-10-0-0-21.us-west-1.compute.internal:3306/akozmirchuk --driver com.mysql.jdbc.Driver --table top_categories  --export-dir /user/hive/warehouse/akozmirchuk.db/top_categories/* --enclosed-by ‘\“’
+sqoop export --connect jdbc:mysql://ip-10-0-0-21.us-west-1.compute.internal:3306/vskachkov \
+--driver com.mysql.jdbc.Driver \
+--connection-manager org.apache.sqoop.manager.MySQLManager \
+--table Slack_Messages  --export-dir /user/hive/warehouse/vskachkov.db/messages_stat
+
+sqoop export --connect jdbc:mysql://ip-10-0-0-21.us-west-1.compute.internal:3306/vskachkov --driver com.mysql.jdbc.Driver --table Slack_Messages  --export-dir /user/hive/warehouse/vskachkov.db/messages_stat
+
+sqoop2 export --connect jdbc:mysql://ip-10-0-0-21.us-west-1.compute.internal:3306/vskachkov --driver com.mysql.jdbc.Driver --table Slack_Messages  --export-dir /user/hive/warehouse/vskachkov.db/messages_stat
+
+sqoop export --connect jdbc:mysql://ip-10-0-0-21.us-west-1.compute.internal:3306/vskachkov \
+--table Slack_Messages  --export-dir /user/hive/warehouse/vskachkov.db/messages_stat
+
+sqoop export --connect jdbc:mysql://ip-10-0-0-21.us-west-1.compute.internal:3306/vskachkov --table messages_stat  --export-dir /user/hive/warehouse/vskachkov.db/messages_stat
+
+sqoop import --driver com.mysql.jdbc.Driver
+
+
+scp ~/Documents/mysql-connector-java-5.1.47-bin.jar vskachkov@gu_master:/opt/cloudera/parcels/CDH-5.12.1-1.cdh5.12.1.p0.3/lib/sqoop/lib
+
+-- SPARK
+spark-submit --class com.slack.core.SlackStats --executor-memory 512M --num-executors 20 --driver-class-path /home/vskachkov/mysql-connector-java-5.1.47-bin.jar file:///home/vskachkov/Slack_stats6.jar hdfs:///user/vskachkov/events/2019/01/*
+
+spark-submit --class com.slack.core.SlackStats --master local --num-executors 1  --driver-class-path /home/vskachkov/mysql-connector-java-5.1.47-bin.jar file:///home/vskachkov/Slack_stats7.jar hdfs:///user/vskachkov/events/2019/01/*
