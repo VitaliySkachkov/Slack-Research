@@ -108,7 +108,7 @@ class SlackStats extends Serializable {
       val text = (if (arr.lift(5).isDefined) arr(5)  else  "_emptyString_").split(" ")
 
       text.map(word => List(event_time.toString, word.replaceAll("""[\p{Punct}&&[^.]]""", "") ))
-    } ).coalesce(1)
+    } )
 
     wordRdd.take(10).foreach(println)
 
@@ -121,7 +121,7 @@ class SlackStats extends Serializable {
       )
     )
 
-    val Slack_DF = spark.createDataFrame(data , DFschema).repartition(2)
+    val Slack_DF = spark.createDataFrame(data , DFschema)
    // Slack_DF.show(10)
 
     val viewName = s"summed"
@@ -139,18 +139,21 @@ class SlackStats extends Serializable {
       s"  )" +
       s") " +
         s"WHERE MaxRate >= 2"
-    ).coalesce(1)
+    )
     msg_stats.show(100)
 
 
     // create properties object
     val prop = new java.util.Properties
-    prop.setProperty("driver", "com.mysql.jdbc.Driver")
     prop.setProperty("user", "vskachkov")
+    prop.setProperty("driver", "com.mysql.jdbc.Driver")
 
     val jdbcUrl : String = "jdbc:mysql://localhost:3306/vskachkov"
 
+dfdf
+
     msg_stats.write.mode("append").jdbc(jdbcUrl, "words_stat2", prop)
+
   }
 
   def wordCount (word: String, rdd: RDD[ChannelMessage]) : Int = {
@@ -201,6 +204,9 @@ class SlackStats extends Serializable {
         del.setString(1, x._1._1.toString)
         del.setString(2, x._1._2.toString)
         del.setString(3, x._2.toString)
+
+
+
 
         del.executeUpdate
       }

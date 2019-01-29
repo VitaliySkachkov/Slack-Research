@@ -1,3 +1,10 @@
+-- garbage!!!
+-- garbage!!!
+-- garbage!!!
+-- garbage!!!
+-- garbage!!!
+
+
 CREATE EXTERNAL TABLE Slack_Messages(
                    	channel STRING,
                    	channel_type STRING,
@@ -14,6 +21,40 @@ CREATE EXTERNAL TABLE Slack_Messages(
                    LOCATION '/events';
 
 
+{"token": "f0zGRg2k0YaPejiTdCm6O4V3"
+    , "team_id": "TFACW6KB6"
+    , "api_app_id": "AFCA6BBAA"
+    , "event": {"type": "message", "subtype": "bot_message", "text": "\u201d \u201cGood,\u201d said that he had been safely over that he said Robert Jordan sat in 1933, and have been\n"
+                , "ts": "1548677191.003800", "username": "Slack2Bigdata", "bot_id": "BFBC7UZ7D", "channel": "CFC07SU86", "event_ts": "1548677191.003800", "channel_type": "channel"}
+    , "type": "event_callback"
+    , "event_id": "EvFQLC5EM9"
+    , "event_time": 1548677191
+    , "authed_users": ["UFAPRCQ93"]}
+
+CREATE EXTERNAL TABLE Slack_Messages_JSON (token STRING
+                    , api_app_id STRING
+                    , event struct<type:string
+                                 , subtype:string
+                                 , text:string
+                                 , ts:string
+                                 , username:string
+                                 , bot_id:string
+                                 , channel:string
+                                 , event_ts:string
+                                 , channel_type:string>
+                    , type STRING
+                    , event_id STRING
+                    , event_time STRING
+                    , authed_users STRING)
+                   COMMENT 'Slack_Messages Table by Vitaliy Skachkov into JSON format'
+                   ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+                   LOCATION '/events_json';
+
+CREATE EXTERNAL TABLE json_serde_table (
+  id string,
+  person struct<email:string, first_name:string, last_name:string, location:struct<address:string, city:string, state:string, zipcode:string>, text:string, url:string>)
+ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+LOCATION '/tmp/json/';
 
 
 CREATE EXTERNAL TABLE Slack_Messages(channel STRING, channel_type STRING, type STRING, slack_user STRING, event_time STRING, text STRING) COMMENT 'Slack_Messages Table by Vitaliy Skachkov' ROW FORMAT DELIMITED FIELDS TERMINATED BY '/f' STORED AS TEXTFILE LOCATION '/events';
@@ -28,8 +69,11 @@ USE VSKACHKOV; alter table Slack_Messages2 add partition (event_date = '2019-01-
 SELECT slack_user, event_date, Count(*) as message_cnt FROM Slack_Messages2 GROUP BY slack_user, event_date;
 
 
+
 USE vskachkov; CREATE TABLE Channels (ChannelID String, CHannelName String);
 USE vskachkov; INSERT INTO TABLE Channels VALUES ('CFC07SU86', 'Random');
+
+SELECT ChannelName, event_date, Count(*) as message_cnt FROM Slack_Messages s INNER JOIN Channels ch on s.channel = ch.channelID GROUP BY ChannelName, event_date;
 
 ALTER TABLE messages_stat ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n;
 

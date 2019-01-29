@@ -1,0 +1,7 @@
+
+-- sqoop driver library path:
+ opt/cloudera/parcels/CDH-5.12.1-1.cdh5.12.1.p0.3/lib/sqoop/lib/
+
+
+-- execute export
+sqoop export --connect jdbc:mysql://ip-10-0-0-21.us-west-1.compute.internal:3306/vskachkov --table messages_stat  --export-dir /user/hive/warehouse/vskachkov.db/messages_stat

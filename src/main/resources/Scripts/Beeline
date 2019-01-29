@@ -1,0 +1,8 @@
+
+-- execute create table script
+beeline -u jdbc:hive2://ip-10-0-0-207.us-west-1.compute.internal:10000 -f /home/vskachkov/Slack_messages.sql
+beeline -u jdbc:hive2://ip-10-0-0-207.us-west-1.compute.internal:10000 -f /home/vskachkov/Slack_messages_JSON.sql
+
+-- create reference table
+USE vskachkov; CREATE TABLE Channels (ChannelID String, CHannelName String);
+USE vskachkov; INSERT INTO TABLE Channels VALUES ('CFC07SU86', 'Random');

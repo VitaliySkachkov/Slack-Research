@@ -1,0 +1,5 @@
+Работающая команда: 
+spark-submit --class com.slack.core.SlackStats --executor-memory 512M --num-executors 20  file:///home/vskachkov/Slack_stats3.jar hdfs:///user/vskachkov/events/2019/01/* 100
+
+YARN
+spark-submit --class com.slack.core.SlackStats --master yarn --deploy-mode cluster --executor-memory 128M --num-executors 2 --driver-memory 500M --driver-class-path /home/vskachkov/mysql-connector-java-5.1.47-bin.jar file:///home/vskachkov/Slack_stats5.jar hdfs:///user/vskachkov/events/2019/01/*
