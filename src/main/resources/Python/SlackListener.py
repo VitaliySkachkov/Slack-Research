@@ -1,22 +1,4 @@
-from slackeventsapi import SlackEventAdapter
-from slackclient import SlackClient
-import os
-import time
-import socket               # Import socket module
-import json
-import pprint
-import urllib
-import requests
-
-# Our app's Slack Event Adapter for receiving actions via the Events API
-slack_signing_secret = os.environ["SLACK_SIGNING_SECRET"]
-slack_events_adapter = SlackEventAdapter(slack_signing_secret, "/slack/events")
-
-# Create a SlackClient for your bot to use for Web API requests
-slack_bot_token = os.environ["SLACK_BOT_TOKEN"]
-slack_client = SlackClient(slack_bot_token)
-
-# Example responder to greetings
+Example responder to greetings
 @slack_events_adapter.on("message")
 def handle_message(event_data):
     event_data_ = event_data
@@ -29,7 +11,7 @@ def handle_message(event_data):
     type = message.get("type")
     text = message.get("text")
     user = message.get("user")
-    event_time_str = time.strftime("%d%m%Y %H:%M:%S", time.localtime(event_time))
+    event_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(event_time))
 
 
     if(str(channel) == "None"):
@@ -47,12 +29,14 @@ def handle_message(event_data):
 
     delimiter = "/f"
     out_msg = channel + delimiter + channel_type + delimiter + type + delimiter + user + delimiter + event_time_str + delimiter+ text
-    # print(out_msg)
+
 
     # send json data
     def sendHTTP (event_data):
 
         gatewayHost = "http://127.0.0.1:6667"
+        #   req = urllib.request.Request(gatewayHost)
+        #   req.add_header('Content-Type', 'application/json; charset=utf-8')
 
         json_dump = json.dumps(event_data)
         json_data = json.loads(json_dump)
@@ -65,6 +49,10 @@ def handle_message(event_data):
             "body": json_dump
         }]
 
+        test_msg = [{"headers" : {"a":"b", "c":"d"},"body": "random_body"}, {"headers" : {"e": "f"},"body": "random_body2"}]
+        #   req.add_header('Content-Length', len(json_dump))
+        #   response = urllib.request.urlopen(req, json_dump)
+
         pprint.pprint(json_msg)
 
         r = requests.post(gatewayHost, json=json_msg)
@@ -72,24 +60,26 @@ def handle_message(event_data):
 
 
     # send to socket
-    def sentNetCat (event_data):
+    def sendNetCat (event_data):
 
         s = socket.socket()         # Create a socket object
         host = '127.0.0.1'
+        #host = socket.gethostname() # Get local machine name
         port = 6666              # Reserve a port for your service.
 
-        json_dump = json.dumps(event_data)
         s.connect((host, port))
-        s.send(json_dump)
+        s.send(out_msg.encode())
+        print(out_msg)
 
     # execute sending
-    sendHTTP (event_data_)
+    sendNetCat (event_data_)
 
 
-    #  s.close
-    #  print ( "event_time:" + event_time_str)
-    #  print ( " - message:" + text)
+    # s.close
+    #   print ( "event_time:" + event_time_str)
+    #   print ( " - message:" + text)
     #  print (message)
+
     #  pprint.pprint(json_data)
 
     # If the incoming message contains "hi", then respond with a "Hello" message

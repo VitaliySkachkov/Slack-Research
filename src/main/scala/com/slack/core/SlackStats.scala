@@ -7,6 +7,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
 import org.apache.spark.sql.types.{StructField, _}
 import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.functions._
 
 import annotation.tailrec
 import org.apache.spark.HashPartitioner
@@ -48,24 +49,27 @@ object SlackStats extends SlackStats
     def main(args: Array[String]) {
 
       val filePath = args(0)
-      val SlackRdd: RDD[String] = sc.textFile(s"$filePath").cache()
 
-      val raw      = rawMessage(SlackRdd)
-      val calc_rdd = msgCount(raw) // wordsCount(raw, 10)
+    /** [1]: basic wordcount computation */
 
-    // расчет всплесков использования слов
-      decomposeMsg(spark, filePath)
-
-      calc_rdd.foreach(x => println("Date: " +  x._1._2 + "; Channel: " +  x._1._1 + "; Messages send: " + x._2.toString))
-    // --------- write RDD to MySQL ------------
-      dbWrite_RDD(calc_rdd)
-
+    //  val SlackRdd: RDD[String] = sc.textFile(s"$filePath").cache()
+    //  val raw      = rawMessage(SlackRdd)
+    //  val calc_rdd = msgCount(raw) // wordsCount(raw, 10)
+    //  calc_rdd.foreach(x => println("Date: " +  x._1._2 + "; Channel: " +  x._1._1 + "; Messages send: " + x._2.toString))
     //  val wordCount_val: Int = wordCount("for", raw)
     //  println("Word written:" + wordCount_val.toString)
 
-    // --------- DataSet Example ----------
-       ChannelMessageDF (spark, filePath)
-       ChannelMessageDF_2 (sc, SlackRdd)
+
+    /** [2]: word distribution calculation */
+      // decomposeMsg(spark, filePath)
+
+    /** [3]: write RDD to MySQ */
+    //  dbWrite_RDD(calc_rdd)
+
+    /** [4]: DataSet Examples ( 1 - SparkSession, 2 - only SparkContext, 3 - JSON format ) */
+    //   ChannelMessageDF (spark, filePath)
+    //   ChannelMessageDF_2 (sc, SlackRdd)
+      ChannelMessageDF_JSON (spark, filePath)
 
       sc.stop()
       spark.stop()
@@ -149,8 +153,6 @@ class SlackStats extends Serializable {
     prop.setProperty("driver", "com.mysql.jdbc.Driver")
 
     val jdbcUrl : String = "jdbc:mysql://localhost:3306/vskachkov"
-
-dfdf
 
     msg_stats.write.mode("append").jdbc(jdbcUrl, "words_stat2", prop)
 
@@ -307,4 +309,18 @@ dfdf
     //    println(header :: text)
       Row.fromSeq(header :: text )
     }
+
+  def ChannelMessageDF_JSON (spark: SparkSession, path: String ) = {
+
+    val DF_json = spark.read.json(path).coalesce(2)
+
+    DF_json.printSchema()
+
+    //val DF_agg = DF_json.select("event.channel").groupBy("event.channel").agg(count("event_id") as "event_count")
+    //DF_agg.show()
+    val viewName = s"DF_json"
+    DF_json.createOrReplaceTempView(viewName)
+
+    spark.sqlContext.sql("SELECT DISTINCT event.channel FROM DF_json").show
+  }
 }
