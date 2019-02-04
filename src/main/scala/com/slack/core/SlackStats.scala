@@ -19,6 +19,8 @@ import java.util.Date
 
 import org.joda.time.DateTime
 
+import scala.io.Source
+
 /**
   * Сообщение из публичного канала Slack
   * 1. channel
@@ -61,7 +63,7 @@ object SlackStats extends SlackStats
 
 
     /** [2]: word distribution calculation */
-      // decomposeMsg(spark, filePath)
+      decomposeMsg(spark, filePath)
 
     /** [3]: write RDD to MySQ */
     //  dbWrite_RDD(calc_rdd)
@@ -69,7 +71,7 @@ object SlackStats extends SlackStats
     /** [4]: DataSet Examples ( 1 - SparkSession, 2 - only SparkContext, 3 - JSON format ) */
     //   ChannelMessageDF (spark, filePath)
     //   ChannelMessageDF_2 (sc, SlackRdd)
-      ChannelMessageDF_JSON (spark, filePath)
+    //  ChannelMessageDF_JSON (spark, filePath)
 
       sc.stop()
       spark.stop()
@@ -99,6 +101,11 @@ class SlackStats extends Serializable {
 
   def decomposeMsg ( spark: SparkSession, sourceFilPath: String) /* : = RDD[WordsDistribution]*/ = {
 
+    def toDT (dt : String) : String = {
+      val dateString = dt.substring(4,8)  + "-" + dt.substring(2,4) + "-" + dt.substring(0, 2) + " " + dt.substring(9,17)
+      dateString
+    }
+
     val rdd: RDD[String] = spark.sparkContext.textFile(sourceFilPath)
 
     val splitRdd = rdd.map( line => line.split("/f") )
@@ -111,12 +118,19 @@ class SlackStats extends Serializable {
       val event_time = arr(4)
       val text = (if (arr.lift(5).isDefined) arr(5)  else  "_emptyString_").split(" ")
 
-      text.map(word => List(event_time.toString, word.replaceAll("""[\p{Punct}&&[^.]]""", "") ))
+      text.map(word => List(toDT(event_time), word.replaceAll("""[\p{Punct}&&[^.]]""", "") ))
     } )
 
     wordRdd.take(10).foreach(println)
 
-    val data = wordRdd.map(row)
+   // val data = wordRdd.map(row)
+
+    val data = wordRdd.map(line => {
+      Row(
+        line(0),
+        line(1))
+    } )
+
 
     val DFschema = StructType(
       List(
@@ -125,29 +139,20 @@ class SlackStats extends Serializable {
       )
     )
 
-    val Slack_DF = spark.createDataFrame(data , DFschema)
-   // Slack_DF.show(10)
+    val Slack_DF = spark.createDataFrame(data , DFschema).coalesce(1)
+    Slack_DF.show(10)
 
-    val viewName = s"summed"
+    val viewName = s"messages_view"
     Slack_DF.createOrReplaceTempView(viewName)
-    val msg_stats = spark.sql(
-      s"SELECT MessageMinute as MessageHour, word, MessageCount FROM ( " +
-      s"SELECT  MessageMinute, word, MessageCount, MAX(MsgRate) OVER (PARTITION BY word) as MaxRate FROM ( " +
-      s"  SELECT MessageMinute, word, MessageCount, MessageCount/ AVG(MessageCount) OVER (PARTITION BY word) as MsgRate FROM ( " +
-      s"    SELECT SUBSTRING(event_time, 10, 2) as MessageMinute, word as word, count(1) as MessageCount " +
-      s"      FROM $viewName " +
-      s"      WHERE LENGTH(word) > 2" +
-    //  s"        AND word = 'day'" +
-      s"      GROUP BY SUBSTRING(event_time, 10, 2), word " +
-      s"    )" +
-      s"  )" +
-      s") " +
-        s"WHERE MaxRate >= 2"
-    )
+
+    val query = Source.fromFile("src/main/resources/Scripts/WordOutliers.sql").mkString.replace("$viewName", viewName)
+    println(query)
+
+    val msg_stats = spark.sql(query)
     msg_stats.show(100)
 
-
     // create properties object
+    /*
     val prop = new java.util.Properties
     prop.setProperty("user", "vskachkov")
     prop.setProperty("driver", "com.mysql.jdbc.Driver")
@@ -155,7 +160,7 @@ class SlackStats extends Serializable {
     val jdbcUrl : String = "jdbc:mysql://localhost:3306/vskachkov"
 
     msg_stats.write.mode("append").jdbc(jdbcUrl, "words_stat2", prop)
-
+*/
   }
 
   def wordCount (word: String, rdd: RDD[ChannelMessage]) : Int = {
