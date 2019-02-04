@@ -27,7 +27,7 @@ SELECT word
            FROM $viewName
            WHERE LENGTH(word) > 2
            and word = 'Jordan'
-           )
+           ) 
     )
 )
 WHERE RateDiff > 2
