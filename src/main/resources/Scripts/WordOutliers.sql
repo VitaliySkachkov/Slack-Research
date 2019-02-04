@@ -1,28 +1,34 @@
 
 SELECT word
-       , event_time
+     --  , MessageMinute
        , MsgRate
+       , event_time
+       ,CASE WHEN MAX_MsgRate / MsgRate < 2 then '  !  ' else '' end as Comments
        FROM (
     SELECT word
-         , event_time
+         , MessageMinute
          , MsgRate
-         , MAX(MsgRate) OVER (partition by word) as Max_MsgRate
+         , AVG(MsgRate) OVER (PARTITION by word) as AVG_MsgRate
+         , MAX(MsgRate) OVER (PARTITION by word) as MAX_MsgRate
+         , MAX(MsgRate) OVER (PARTITION by word)
+           / AVG(MsgRate) OVER (PARTITION by word) as RateDiff
+         , event_time
       FROM (
         SELECT word
+         , MessageMinute
          , event_time
-         , SUM(cnt) over (partition by word order by unix_time range between 60 preceding and current row ) /
-            SUM(cnt) over (partition by word order by unix_time range between 120 preceding and 61 preceding ) as MsgRate
+         , SUM(cnt) OVER (PARTITION by word ORDER by unix_time range between 60 preceding and current row ) as MsgRate
         FROM (
          SELECT word
               , unix_timestamp(event_time) as unix_time
               , event_time
-              , SUBSTRING(event_time, 10, 2) as MessageMinute
+              , SUBSTRING(event_time, 15, 2) as MessageMinute
               , 1 AS cnt
            FROM $viewName
            WHERE LENGTH(word) > 2
+           and word = 'Jordan'
            )
-           order by word ASC
-         , event_time ASC
     )
 )
-WHERE nvl(Max_MsgRate, 0) > 2
+WHERE RateDiff > 2
+ORDER BY word ASC, event_time ASC
